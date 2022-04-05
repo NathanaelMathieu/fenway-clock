@@ -23,7 +23,7 @@ module.exports = {
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "project": "tsconfig.json",
+        "project": "src/index.ts",
         "sourceType": "module"
     },
     "plugins": [
@@ -155,6 +155,7 @@ module.exports = {
         "prefer-arrow/prefer-arrow-functions": "error",
         "prefer-const": "error",
         "radix": "error",
+        "root": true,
         "spaced-comment": [
             "error",
             "always",
