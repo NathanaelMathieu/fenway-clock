@@ -8,6 +8,8 @@
 - APIs
   - This appears to be a good wrapper for the official MLB API: https://github.com/asbeane/mlb-stats-api
   - Said API also has some public docs including live games: https://statsapi.mlb.com/docs/endpoints/game#tag/game
+- Audio
+  - Streaming radio is not likely to be useful. Instead we could consider an fm tuner like this: https://www.adafruit.com/product/1497
 
 ## 2022-03-30
 
