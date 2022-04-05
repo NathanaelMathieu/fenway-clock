@@ -1,5 +1,11 @@
 ![Green Monster](<./reference/Green Monster Hi-Res by Peter Vanderwarker Photography (All Rights Reserved).jpg>)
 
+## 2022-04-05
+
+- Fonts
+  - Good reference on font types with useful images here: http://www.fenwaypurist.com/2018/04/
+  - Also here (references the above): https://fontid.co/15366/fenway-park-scoreboard
+
 ## 2022-03-30
 
 - Original project estimates cost at $200 for four modules
