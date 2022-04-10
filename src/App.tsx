@@ -46,9 +46,12 @@ function scoreboardRow(boxScoreRow = ["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]) 
 function App() {
   return (
     <div className="App">
-      {scoreboardRow()}
-      {scoreboardRow([39,"TB",2,0,3,0,0,0,2,0,0,"",7,8,1])}
-      {scoreboardRow([63,"BOSTON",0,0,0,0,0,0,4,3,1,"",8,11,0])}
+      <div className="name">{text("FENWAY PARK")}</div>
+      <div className="scores">
+        {scoreboardRow()}
+        {scoreboardRow([39,"TB",2,0,3,0,0,0,2,0,0,"",7,8,1])}
+        {scoreboardRow([63,"BOSTON",0,0,0,0,0,0,4,3,1,"",8,11,0])}
+      </div>
     </div>
   );
 }

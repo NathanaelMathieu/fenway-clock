@@ -6,20 +6,46 @@ body {
   height: 100%;
 }
 #root {
-  height: 100%;
-  
+  --font-size: 5em;
   --fenway-green: #54796d;
   --fenway-gray: #3b4336;
+
+
+  height: 100%;
+  background-color:  var(--fenway-green);
+  
+  /* The padding and line-height fix vertical alignment issues*/
+  /* font-family: 'Martel Sans', sans-serif; padding-top: 20px; */
+  /* font-family: 'Poppins', sans-serif; padding-top: 8px; */
+  font-family: 'Ubuntu', sans-serif;
+
+  color: white;
+  font-size: var(--font-size);
+  font-weight: bold;
+  letter-spacing: -4px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .App {
-  --padding-size: 10px;
-  height: calc(100% - 2 * var(--padding-size));
-  background-color:  var(--fenway-green);
+  --padding-horizontal-size: 10px;
+  width: 100%;
+  height: 100%;
   display: flex;
-  gap: 12%;
-  padding: var(--padding-size);
+  justify-content: center;
+  gap: 2%;
+  padding: 0px var(--padding-horizontal-size);
   flex-direction: column;
+}
+
+.scores {
+  height: 70%;
+
+  display: flex;
+  flex-direction: column;
+  gap: 7%;
 }
 
 .scoreboardRow {
@@ -29,8 +55,8 @@ body {
   display: grid;
   grid-template-columns:
         [player-number] 5%
-        [team-name] 20%
-        [innings-1-through-9] repeat(3, 13%)
+        [team-name] 17%
+        [innings-1-through-9] repeat(3, 14%)
         [inning-10] 4%
         [r-h-e] 20%;
 }
@@ -51,7 +77,6 @@ body {
 
 .card {
   flex-grow: 1;
-  height: 100%;
   width: 100%;
 
   display: flex;
@@ -60,18 +85,21 @@ body {
 }
 
 .inset {
-  box-shadow: inset 2px 2px 2px 2px black;
+  box-shadow: inset 2px -2px 2px 2px black;
   overflow: hidden;
 }
 
 .visitor-team {
-  box-shadow: 2px 2px 2px 2px black;
+  box-shadow: -2px 2px 2px 2px black;
   overflow: hidden;
 }
 
+.name {
+  align-self: center;
+  letter-spacing: 70px;
+  font-weight: normal;
+}
+
 p {
-  color: white;
   margin: 0;
-  font-size: 5em;
-  font-weight: bold;
 }
