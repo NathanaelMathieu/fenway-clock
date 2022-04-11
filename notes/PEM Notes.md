@@ -1,5 +1,10 @@
 ![Green Monster](<./reference/Green Monster Hi-Res by Peter Vanderwarker Photography (All Rights Reserved).jpg>)
 
+## 2022-04-11
+
+- This could be a good option to work with for deployment and to allow things to work in parallel: https://github.com/balena-io-playground/balena-electronjs-react
+- Master list of useful baseball hackathon resources: https://github.com/baseballhackday/data-and-resources/wiki/Resources-and-ideas
+
 ## 2022-04-05
 
 - Fonts
