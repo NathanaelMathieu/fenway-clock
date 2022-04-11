@@ -1,8 +1,57 @@
 declare module 'mlb-stats-api' {
+    export interface LiveGame {
+        copyright: string;
+        gamePk: number;
+        link: string;
+        metaData: MetaData;
+        gameData: GameData;
+        liveData: LiveData;
+      }
+
+      export interface MetaData {
+        wait: number;
+        timeStamp: string;
+        gameEvents?: (string)[] | null;
+        logicalEvents?: (string)[] | null;
+      }
+
+      export interface ProbablePitchers {
+        away: Player;
+        home: Player;
+        }
+
+      export interface Datetime {
+        dateTime: string;
+        originalDate: string;
+        officialDate: string;
+        dayNight: string;
+        time: string;
+        ampm: string;
+      }
+      export interface GameStatus {
+        abstractGameState: string;
+        codedGameState: string;
+        detailedState: string;
+        statusCode: string;
+        startTimeTBD: boolean;
+        abstractGameCode: string;
+      }
+
+      export interface OfficialScorer {
+          id: number;
+          fullName: string;
+          link: string;
+      }
+
+      export interface PrimaryDatacaster {
+          id: number;
+          fullName: string;
+          link: string;
+      }
 
     export interface Venue {
         id: number;
-        name: string;
+        name?: string;
         link: string;
     }
 
@@ -10,6 +59,7 @@ declare module 'mlb-stats-api' {
         id?: number;
         name?: string;
         link: string;
+        abbreviation?: string;
     }
 
     export interface Division {
@@ -22,18 +72,6 @@ declare module 'mlb-stats-api' {
         id: number;
         link: string;
         name: string;
-    }
-
-    export interface SpringLeague {
-        id: number;
-        name: string;
-        link: string;
-        abbreviation: string;
-    }
-
-    export interface SpringVenue {
-        id: number;
-        link: string;
     }
 
     export interface  Team {
@@ -58,8 +96,8 @@ declare module 'mlb-stats-api' {
         franchiseName?: string;
         clubName?: string;
         active?: boolean;
-        springLeague?: SpringLeague;
-        springVenue?: SpringVenue;
+        springLeague?: League;
+        springVenue?: Venue;
     }
 
     export interface TeamsResponse {
@@ -87,101 +125,35 @@ declare module 'mlb-stats-api' {
         away: Away;
     }
 
-    export interface Pitcher {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Catcher {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface First {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Second {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Third {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Shortstop {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Left {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Center {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Right {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface Batter {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface OnDeck {
-        id: number;
-        fullName: string;
-        link: string;
-    }
-
-    export interface InHole {
+    export interface Player {
         id: number;
         fullName: string;
         link: string;
     }
 
     export interface Defense {
-        pitcher: Pitcher;
-        catcher: Catcher;
-        first: First;
-        second: Second;
-        third: Third;
-        shortstop: Shortstop;
-        left: Left;
-        center: Center;
-        right: Right;
-        batter: Batter;
-        onDeck: OnDeck;
-        inHole: InHole;
+        pitcher: Player;
+        catcher: Player;
+        first: Player;
+        second: Player;
+        third: Player;
+        shortstop: Player;
+        left: Player;
+        center: Player;
+        right: Player;
+        batter: Player;
+        onDeck: Player;
+        inHole: Player;
         battingOrder: number;
         team: Team;
     }
 
     export interface Offense {
-        batter: Batter;
-        onDeck: OnDeck;
-        inHole: InHole;
-        first: First;
-        pitcher: Pitcher;
+        batter: Player;
+        onDeck: Player;
+        inHole: Player;
+        first: Player;
+        pitcher: Player;
         battingOrder: number;
         team: Team;
     }
@@ -203,7 +175,7 @@ declare module 'mlb-stats-api' {
         outs: number;
     }
 
-    export interface Status {
+    export interface GameStatus {
         abstractGameState: string;
         codedGameState: string;
         detailedState: string;
@@ -226,11 +198,6 @@ declare module 'mlb-stats-api' {
         seriesNumber: number;
     }
 
-    export interface Teams {
-        away: Away;
-        home: Home;
-    }
-
     export interface Venue {
         id: number;
         name: string;
@@ -241,14 +208,14 @@ declare module 'mlb-stats-api' {
         link: string;
     }
 
-    export interface Game {
+    export interface GameData {
         gamePk: number;
         link: string;
         gameType: string;
         season: string;
         gameDate: string;
         officialDate: string;
-        status: Status;
+        status: GameStatus;
         teams: Teams;
         venue: Venue;
         content: Content;
@@ -269,6 +236,48 @@ declare module 'mlb-stats-api' {
         recordSource: string;
         ifNecessary: string;
         ifNecessaryDescription: string;
+        game: GameData;
+        datetime: Datetime;
+        status: GameStatus;
+        teams: Teams;
+        players: Player[];
+        venue: Venue;
+        officialVenue?: Venue;
+        weather?: Weather;
+        gameInfo?: GameInfo;
+        review?: Review;
+        flags?: Flags;
+        alerts?: any[];
+        probablePitchers?: ProbablePitchers;
+        officialScorer?: OfficialScorer;
+        primaryDatacaster?: PrimaryDatacaster;
+    }
+
+    export interface Weather {
+        condition: string;
+        temp: string;
+        wind: string;
+    }
+
+    export interface GameInfo {
+        attendance: number;
+        firstPitch: string;
+        gameDurationMinutes: number;
+    }
+
+    export interface Review {
+        hasChallenges: boolean;
+        away: {used: number, remaining: number};
+        home: {used: number, remaining: number};
+    }
+
+    export interface Flags {
+        noHitter: boolean;
+        perfectGame: boolean;
+        awayTeamNoHitter: boolean;
+        awayTeamPerfectGame: boolean;
+        homeTeamNoHitter: boolean;
+        homeTeamPerfectGame: boolean;
     }
 
     export interface ScheduleDate {
