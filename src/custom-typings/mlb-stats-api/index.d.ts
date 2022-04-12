@@ -1,5 +1,43 @@
 declare module 'mlb-stats-api' {
-    export interface LiveGame {
+
+    type MLBStatsAPI = {
+        new (): MLBStatsAPI;
+        getGame(queryParams: GameQueryParams): Promise<{data: GameData}>;
+        getGameLinescore(queryParams: LinescoreQueryParams): Promise<{data: LinescoreData}>;
+        getTeams(queryParams: TeamsQueryParams): Promise<{data: TeamsData}>;
+    }
+
+    export interface GameQueryParams {
+        pathParams: {
+            gamePk: number,
+            timecode?: string;
+            hydration?: string[];
+            fields?: string[];
+        }
+    }
+
+    export interface TeamsQueryParams {
+        pathParams: {
+            season?: string;
+            activeStatus?: string;
+            allStarStatuses?: string;
+            leagueIds?: string;
+            sportIds?: string;
+            gameType?: string;
+            hydrate?: string[];
+            fields?: string[];
+        }
+    }
+
+    export interface LinescoreQueryParams {
+        pathParams: {
+            gamePk: number;
+            timecode?: string;
+            fields?: string[];
+        }
+    }
+
+    export interface LiveGameData {
         copyright: string;
         gamePk: number;
         link: string;
@@ -100,7 +138,7 @@ declare module 'mlb-stats-api' {
         springVenue?: Venue;
     }
 
-    export interface TeamsResponse {
+    export interface TeamsData {
         copyright: string;
         teams: Team[];
     }
@@ -158,7 +196,7 @@ declare module 'mlb-stats-api' {
         team: Team;
     }
 
-    export interface LinescoreResponse {
+    export interface LinescoreData {
         copyright: string;
         currentInning: number;
         currentInningOrdinal: string;

@@ -1,6 +1,6 @@
-import { TeamsResponse } from "mlb-stats-api";
+import { TeamsData } from "mlb-stats-api";
 
-const teamsResponse: TeamsResponse = {
+const teamsResponse: TeamsData = {
     "copyright" : "Copyright 2022 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
     "teams" : [ {
       "allStarStatus" : "N",

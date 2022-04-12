@@ -3,7 +3,7 @@ import response from './linescore-gamePk-534196-response';
 import scheduleResponse from './schedule-response';
 import teamsResponse from './teams-response';
 import './App.css';
-import { LinescoreResponse, TeamsResponse, ScheduleResponse } from 'mlb-stats-api';
+import { LinescoreData, TeamsData, ScheduleResponse } from 'mlb-stats-api';
 
 function text(text: string|number) {
   return <p>{text}</p>;
@@ -112,8 +112,8 @@ function App() {
 
   const [awayList, setAwayList] = React.useState<(string | number)[]>(emptyLinescoreArray());
   const [homeList, setHomeList] = React.useState<(string | number)[]>(emptyLinescoreArray());
-  const [linescoreRes, setLinescoreRes] = React.useState<LinescoreResponse | undefined>();
-  const [teamsRes, setTeamsRes] = React.useState<TeamsResponse | undefined>();
+  const [linescoreRes, setLinescoreRes] = React.useState<LinescoreData | undefined>();
+  const [teamsRes, setTeamsRes] = React.useState<TeamsData | undefined>();
   const [scheduleRes, setScheduleRes] = React.useState<ScheduleResponse | undefined>();
 
   useEffect(() => {
