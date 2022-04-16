@@ -141,7 +141,7 @@ function App() {
     // setLinescoreRes(response);
     setScheduleRes(scheduleResponse);
     setTeamsRes(teamsResponse);
-  }, [setLinescoreRes, setScheduleRes, setTeamsRes]);
+  }, [MLBStatsAPI, setLinescoreRes, setScheduleRes, setTeamsRes]);
 
   useEffect(() => {
     setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
