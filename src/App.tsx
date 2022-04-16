@@ -3,7 +3,7 @@ import response from './linescore-gamePk-534196-response';
 import scheduleResponse from './schedule-response';
 import teamsResponse from './teams-response';
 import './App.css';
-import { LinescoreData, TeamsData, ScheduleResponse } from 'mlb-stats-api';
+import { GameLinescoreDataResponse, TeamsDataResponse, ScheduleDataResponse, MLBStatsAPI } from 'mlb-stats-api';
 
 function text(text: string|number) {
   return <p>{text}</p>;
@@ -108,13 +108,13 @@ function emptyLinescoreArray() {
 }
 
 function App() {
-  const MLBStatsAPI = require('mlb-stats-api');
+  const MLBStatsAPI: MLBStatsAPI = require('mlb-stats-api');
 
   const [awayList, setAwayList] = React.useState<(string | number)[]>(emptyLinescoreArray());
   const [homeList, setHomeList] = React.useState<(string | number)[]>(emptyLinescoreArray());
-  const [linescoreRes, setLinescoreRes] = React.useState<LinescoreData | undefined>();
-  const [teamsRes, setTeamsRes] = React.useState<TeamsData | undefined>();
-  const [scheduleRes, setScheduleRes] = React.useState<ScheduleResponse | undefined>();
+  const [linescoreRes, setLinescoreRes] = React.useState<GameLinescoreDataResponse | undefined>();
+  const [teamsRes, setTeamsRes] = React.useState<TeamsDataResponse | undefined>();
+  const [scheduleRes, setScheduleRes] = React.useState<ScheduleDataResponse | undefined>();
 
   useEffect(() => {
     // get sox schedule for today
@@ -129,16 +129,19 @@ function App() {
       // Save the linescore data in a cache until the next game time
         // TODO: LocalStorage? useLocalState type thing (a component I built for something previously)?
     const mlbStats = new MLBStatsAPI();
-    mlbStats.getGame({pathParams: {gamePk: 661316}}).then((res: any) => {
-      console.log(res)// res.data
-    });
+    // mlbStats.getGame({pathParams: {gamePk: "661316"}}).then((res: any) => {
+    //   console.log(res)// res.data
+    // });
     mlbStats.getGameLinescore({pathParams: {gamePk: 661316}}).then((res: any) => {
       setLinescoreRes(res.data);
     });
+    
+    // mlbStats.getGameLinescore()
+    
     // setLinescoreRes(response);
     setScheduleRes(scheduleResponse);
     setTeamsRes(teamsResponse);
-  }, [setLinescoreRes, setScheduleRes, setTeamsRes, MLBStatsAPI]);
+  }, [setLinescoreRes, setScheduleRes, setTeamsRes]);
 
   useEffect(() => {
     setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));

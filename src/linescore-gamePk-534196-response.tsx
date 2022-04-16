@@ -1,6 +1,6 @@
-import { LinescoreData } from "mlb-stats-api";
+import { GameLinescoreDataResponse } from "mlb-stats-api";
 
-const response: LinescoreData = {
+const response: GameLinescoreDataResponse = {
   "copyright" : "Copyright 2022 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
   "currentInning" : 9,
   "currentInningOrdinal" : "9th",

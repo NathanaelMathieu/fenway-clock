@@ -19,7 +19,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types", "./index.d.ts"]
+    "typeRoots": ["./node_modules/@types", "./src/custom-typings/mlb-stats-api/index.d.ts"]
   },
   "include": [
     "src"
