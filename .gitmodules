@@ -1,0 +1,3 @@
+[submodule "mlb-stats-typescript-api"]
+	path = mlb-stats-typescript-api
+	url = git@github.com:NathanaelMathieu/mlb-stats-typescript-api.git

@@ -1,6 +1,6 @@
-import { ScheduleDataResponse } from "mlb-stats-api";
+import {ScheduleAPI} from 'mlb-stats-typescript-api';
 
-const scheduleResponse: ScheduleDataResponse = {
+const scheduleResponse: ScheduleAPI.ScheduleRestObject = {
     "copyright" : "Copyright 2022 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
     "totalItems" : 1,
     "totalEvents" : 0,

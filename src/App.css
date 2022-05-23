@@ -50,7 +50,7 @@ body {
 
 .scoreboardRow {
   flex-grow: 1;
-  height: 100%;
+  /* height: 100%; */
   gap: 2%;
   display: grid;
   grid-template-columns:
@@ -59,6 +59,13 @@ body {
         [innings-1-through-9] repeat(3, 14%)
         [inning-10] 4%
         [r-h-e] 20%;
+}
+
+.errorLinescore {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .inning-group {

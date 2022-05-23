@@ -3,7 +3,7 @@ import response from './linescore-gamePk-534196-response';
 import scheduleResponse from './schedule-response';
 import teamsResponse from './teams-response';
 import './App.css';
-import { GameLinescoreDataResponse, TeamsDataResponse, ScheduleDataResponse, MLBStatsAPI } from 'mlb-stats-api';
+import { GameAPI, TeamAPI, ScheduleAPI } from 'mlb-stats-typescript-api';
 
 function text(text: string|number) {
   return <p>{text}</p>;
@@ -65,7 +65,7 @@ enum Team {
 
 function extractLinescoreForTeam(linescore: any, teamsRes: any, team: Team): (number|string)[] {
   if (!linescore) {
-    return emptyLinescoreArray();
+    return [];
   }
   let linescoreList: (number|string)[] = [];
   
@@ -103,21 +103,16 @@ function extractLinescoreForTeam(linescore: any, teamsRes: any, team: Team): (nu
 
 const soxTeamId = 111;
 
-function emptyLinescoreArray() {
-  return Array(15).fill("");
-}
-
 function App() {
-  const MLBStatsAPI: MLBStatsAPI = require('mlb-stats-api');
-
-  const [awayList, setAwayList] = React.useState<(string | number)[]>(emptyLinescoreArray());
-  const [homeList, setHomeList] = React.useState<(string | number)[]>(emptyLinescoreArray());
-  const [linescoreRes, setLinescoreRes] = React.useState<GameLinescoreDataResponse | undefined>();
-  const [teamsRes, setTeamsRes] = React.useState<TeamsDataResponse | undefined>();
-  const [scheduleRes, setScheduleRes] = React.useState<ScheduleDataResponse | undefined>();
+  const [awayList, setAwayList] = React.useState<(string | number)[]>([]);
+  const [homeList, setHomeList] = React.useState<(string | number)[]>([]);
+  const [linescoreRes, setLinescoreRes] = React.useState<GameAPI.Linescore | undefined>();
+  const [teamsRes, setTeamsRes] = React.useState<TeamAPI.TeamsRestObject | undefined>();
+  const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
 
   useEffect(() => {
     // get sox schedule for today
+    // setScheduleRes()
       // TODO: how frequently should we do this?
     // if there is a game today, get the game data
     // if that game is warmup or otherwise live, fill the data in. Otherwise leave the info from the cache
@@ -128,11 +123,10 @@ function App() {
         // TODO: Not sure this should be in that linescore function. Evaluate and split off as needed
       // Save the linescore data in a cache until the next game time
         // TODO: LocalStorage? useLocalState type thing (a component I built for something previously)?
-    const mlbStats = new MLBStatsAPI();
     // mlbStats.getGame({pathParams: {gamePk: "661316"}}).then((res: any) => {
     //   console.log(res)// res.data
     // });
-    mlbStats.getGameLinescore({pathParams: {gamePk: 661316}}).then((res: any) => {
+    GameAPI.GameService.linescore(661316).then((res: any) => {
       setLinescoreRes(res.data);
     });
     
@@ -141,7 +135,7 @@ function App() {
     // setLinescoreRes(response);
     setScheduleRes(scheduleResponse);
     setTeamsRes(teamsResponse);
-  }, [MLBStatsAPI, setLinescoreRes, setScheduleRes, setTeamsRes]);
+  }, [setLinescoreRes, setScheduleRes, setTeamsRes]);
 
   useEffect(() => {
     setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
@@ -159,8 +153,7 @@ function App() {
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {scoreboardRow()}
-        {scoreboardRow(awayList)}
-        {scoreboardRow(homeList)}
+        {(awayList.length === 0 || homeList.length === 0) ? <> {scoreboardRow(awayList)} {scoreboardRow(homeList)} </> : <div className='errorLinescore'>Error: No Linescore Data</div>}
       </div>
     </div>
   );
