@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import response from './linescore-gamePk-534196-response';
+// import response from './linescore-gamePk-534196-response';
 import scheduleResponse from './schedule-response';
 import teamsResponse from './teams-response';
 import './App.css';
@@ -50,13 +50,13 @@ function scoreboardRow(linescore = ["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]) {
   );
 }
 
-function checkForScores(setBoxscore: void) {
+// function checkForScores(setBoxscore: void) {
   // const interval = setInterval( function() {
   //   //do something
   // }
   // , 5000)
   // clearInterval();
-}
+// }
 
 enum Team {
   AwayTeam,
@@ -101,14 +101,14 @@ function extractLinescoreForTeam(linescore: any, teamsRes: any, team: Team): (nu
   return linescoreList;
 }
 
-const soxTeamId = 111;
+// const soxTeamId = 111;
 
 function App() {
   const [awayList, setAwayList] = React.useState<(string | number)[]>([]);
   const [homeList, setHomeList] = React.useState<(string | number)[]>([]);
   const [linescoreRes, setLinescoreRes] = React.useState<GameAPI.Linescore | undefined>();
   const [teamsRes, setTeamsRes] = React.useState<TeamAPI.TeamsRestObject | undefined>();
-  const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
+  // const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
 
   useEffect(() => {
     // get sox schedule for today
@@ -133,9 +133,9 @@ function App() {
     // mlbStats.getGameLinescore()
     
     // setLinescoreRes(response);
-    setScheduleRes(scheduleResponse);
+    // setScheduleRes(scheduleResponse);
     setTeamsRes(teamsResponse);
-  }, [setLinescoreRes, setScheduleRes, setTeamsRes]);
+  }, [setLinescoreRes, setTeamsRes]);
 
   useEffect(() => {
     setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
