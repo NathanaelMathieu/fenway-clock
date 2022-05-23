@@ -1,6 +1,4 @@
 import React, { useEffect } from 'react';
-// import response from './linescore-gamePk-534196-response';
-import scheduleResponse from './schedule-response';
 import teamsResponse from './teams-response';
 import './App.css';
 import { GameAPI, TeamAPI, ScheduleAPI } from 'mlb-stats-typescript-api';
@@ -59,11 +57,11 @@ function scoreboardRow(linescore = ["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]) {
 // }
 
 enum Team {
-  AwayTeam,
-  HomeTeam
+  AwayTeam = "away",
+  HomeTeam = "home",
 }
 
-function extractLinescoreForTeam(linescore: any, teamsRes: any, team: Team): (number|string)[] {
+function extractLinescoreForTeam(linescore: GameAPI.Linescore, teamsRes: any, team: Team): (number|string)[] {
   if (!linescore) {
     return [];
   }
@@ -71,36 +69,37 @@ function extractLinescoreForTeam(linescore: any, teamsRes: any, team: Team): (nu
   
   linescoreList.push(0);
 
-  if (linescore.isTopInning !== undefined && teamsRes && teamsRes.teams.length > 0) {
-    let teamId: number;
-    if (linescore.isTopInning) {
-      teamId = team === Team.HomeTeam ? linescore.defense.team.id : linescore.offense.team.id;
-    } else {
-      teamId = team === Team.AwayTeam ? linescore.defense.team.id : linescore.offense.team.id;
-    }
+  if (teamsRes && teamsRes.teams.length > 0) {
+    let teamId = team === Team.HomeTeam ? linescore.defense?.team?.id : linescore.offense?.team?.id; 
     let teams: [any] = teamsRes.teams;
     linescoreList.push(teams.find((team) => team.id === teamId).abbreviation);
   }
-
-  if (linescore.innings) {
-    for (let i = 0; i < linescore.innings.length; i++) {
-      linescoreList.push(team === Team.HomeTeam ? linescore.innings[i]["home"]["runs"] : linescore.innings[i]["away"]["runs"])
-    }
-  }
-
+  // TODO: Handle extra innings
+  
   for (let i = linescoreList.length - 1; i < 11; i++) {
-    linescoreList.push("");
+    if (linescore.innings && i < linescore.innings.length) {
+      const runs = linescore.innings[i].home?.runs ?? "";
+      linescoreList.push(runs);
+    } else {
+      linescoreList.push("");
+    }
   }
   
   if (linescore.teams) {
-    linescoreList.push(team === Team.HomeTeam ? linescore.teams.home.runs : linescore.teams.away.runs);
-    linescoreList.push(team === Team.HomeTeam ? linescore.teams.home.hits : linescore.teams.away.hits);
-    linescoreList.push(team === Team.HomeTeam ? linescore.teams.home.errors : linescore.teams.away.errors);
+    const thisTeam = team === Team.HomeTeam ? linescore.teams.home : linescore.teams.away;
+    if (thisTeam && thisTeam.runs && thisTeam.hits && thisTeam.errors) {
+      linescoreList.push(thisTeam.runs);
+      linescoreList.push(thisTeam.hits);
+      linescoreList.push(thisTeam.errors);
+    } else {
+      linescoreList.push("","","");
+    }
   }
 
   return linescoreList;
 }
 
+const soxTeamId = 134; // Pirates
 // const soxTeamId = 111;
 
 function App() {
@@ -108,52 +107,47 @@ function App() {
   const [homeList, setHomeList] = React.useState<(string | number)[]>([]);
   const [linescoreRes, setLinescoreRes] = React.useState<GameAPI.Linescore | undefined>();
   const [teamsRes, setTeamsRes] = React.useState<TeamAPI.TeamsRestObject | undefined>();
-  // const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
+  //eslint-disable-next-line
+  const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
 
   useEffect(() => {
-    // get sox schedule for today
-    // setScheduleRes()
-      // TODO: how frequently should we do this?
-    // if there is a game today, get the game data
-    // if that game is warmup or otherwise live, fill the data in. Otherwise leave the info from the cache
-      // get player data for pitcher number
-          // TODO: Figure out cache mechanics. Do we need to call this every time or wait until we don't hit on a lookup?
-          // TODO: Should we keep a minimal copy locally aka only pitchers that have previously appeared in games? simple dict
-      // get team abbreviations (already implemented)
-        // TODO: Not sure this should be in that linescore function. Evaluate and split off as needed
-      // Save the linescore data in a cache until the next game time
-        // TODO: LocalStorage? useLocalState type thing (a component I built for something previously)?
-    // mlbStats.getGame({pathParams: {gamePk: "661316"}}).then((res: any) => {
-    //   console.log(res)// res.data
-    // });
-    GameAPI.GameService.linescore(661316).then((res: any) => {
-      setLinescoreRes(res.data);
+    ScheduleAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
+      setScheduleRes(res);
     });
-    
-    // mlbStats.getGameLinescore()
-    
-    // setLinescoreRes(response);
-    // setScheduleRes(scheduleResponse);
+    // TODO: Cache this in storage, also do an actual call
     setTeamsRes(teamsResponse);
-  }, [setLinescoreRes, setTeamsRes]);
+  }, []);
 
   useEffect(() => {
-    setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
-    setHomeList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.HomeTeam));
-  }, [linescoreRes, setAwayList, setHomeList, teamsRes])
+    // TODO: If no game today, load previous day's game
+    if (scheduleRes && scheduleRes.totalGames && scheduleRes.totalGames > 0
+        && scheduleRes.dates && scheduleRes.dates.length > 0
+        && scheduleRes.dates[0] && scheduleRes.dates[0].games) {
+      // TODO: Check for the time of the game, we want to leave the previous game up for a while
+      // TODO: What about double headers?
+      const gamePk = scheduleRes.dates[0]?.games[0]?.gamePk;
 
-  // useEffect(() => {
-  //   let newList = awayList;
-  //   newList[1] = scheduleRes.dates[0].games[0].teams.away
-  //   setAwayList()
-  // }, [scheduleRes]);
+      if (gamePk) {
+        GameAPI.GameService.linescore(gamePk).then((res: GameAPI.Linescore) => {
+          setLinescoreRes(res);
+        });
+      }
+    }
+  }, [scheduleRes])
+
+  useEffect(() => {
+    if (linescoreRes && teamsRes) {
+      setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
+      setHomeList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.HomeTeam));
+    }
+  }, [linescoreRes, teamsRes, setAwayList, setHomeList]);
 
   return (
     <div className="App">
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {scoreboardRow()}
-        {(awayList.length === 0 || homeList.length === 0) ? <> {scoreboardRow(awayList)} {scoreboardRow(homeList)} </> : <div className='errorLinescore'>Error: No Linescore Data</div>}
+        {(awayList.length === 0 || homeList.length === 0) ? <div className='errorLinescore'>Error: No Linescore Data</div> : <> {scoreboardRow(awayList)} {scoreboardRow(homeList)} </> }
       </div>
     </div>
   );
