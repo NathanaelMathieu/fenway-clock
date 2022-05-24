@@ -3,114 +3,170 @@ import teamsResponse from './teams-response';
 import './App.css';
 import { GameAPI, TeamAPI, ScheduleAPI } from 'mlb-stats-typescript-api';
 
-function text(text: string|number) {
-  return <p>{text}</p>;
+const text = (t: string|number) => <p>{t}</p>;
+
+function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: number) {
+  if (!linescore) {
+    return scoreboardRowCreateJSX(["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]);
+  }
+  
+  let innings: (string|number)[] = [];
+  if (linescore.innings) {
+    // When past the 10th inning, the 11th goes in the 1 spot. So, we mod by 10 and take a slice from the back
+    innings = linescore.innings.slice(-((currentInning ?? 0) % 10));
+  }
+
+  return scoreboardRowCreateJSX([
+    linescore.pitcher ?? 0,
+    linescore.teamAbbreviation === "BOS" ? "BOSTON" : linescore.teamAbbreviation,
+    innings[0],
+    innings[1],
+    innings[2],
+    innings[3],
+    innings[4],
+    innings[5],
+    innings[6],
+    innings[7],
+    innings[8],
+    innings[9],
+    linescore.runs ?? 0,
+    linescore.hits ?? 0,
+    linescore.errors ?? 0,
+  ]);
 }
 
-function scoreboardRow(linescore = ["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]) {
-  if (linescore.length !== 15) {
-    return;
-  };
-  const teamName = linescore[1].toString();
+type ScoreboardRowData = [
+  (string|number),
+  string?, 
+  (string|number)?,
+  (string|number)?,
+  (string|number)?,
+  (string|number)?, 
+  (string|number)?,
+  (string|number)?,
+  (string|number)?, 
+  (string|number)?,
+  (string|number)?,
+  (string|number)?,
+  (string|number)?,
+  (string|number)?,
+  (string|number)?,
+];
+
+function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number) {
+  const teamAbbreviation = data[1] ?? "";
   let cardClasses = "card ";
-  const teamClasses = teamName === "BOSTON" || teamName.length === 0 ? cardClasses : cardClasses + "visitor-team ";
-  if (teamName.length !== 0) cardClasses = cardClasses + "inset ";
+  const teamClasses = teamAbbreviation === "BOSTON" || teamAbbreviation.length === 0 ? cardClasses : cardClasses + "visitor-team ";
+  if (teamAbbreviation.length !== 0) cardClasses = cardClasses + "inset ";
+  let indexToTurnYellow = 0;
+  // The active inning should show as blank unless there is a score, in which case it should be yellow
+  if (currentInning) {
+    indexToTurnYellow = currentInning % 10 + 1;
+    // The mod 10 handles more than 10 innings
+  }
+  
   return (
     <>
-    <div id={teamName} className={"scoreboardRow"}>
-      <div id="player-number" className={cardClasses}>{text(linescore[0])}</div>
-      <div className={teamClasses} id="team-name">{text(linescore[1])}</div>
+    <div id={teamAbbreviation} className={"scoreboardRow"}>
+      <div id="player-number" className={cardClasses}>{text(data[0] ?? "P")}</div>
+      <div className={teamClasses} id="team-name">{text(teamAbbreviation)}</div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(linescore[2])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[3])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[4])}</div>
+        {/** TODO: Make this work, turn the correct numbers yellow */}
+        {data.slice(2,5).map(d => {
+          let id = "inning";
+          if (d && d === indexToTurnYellow) {
+            id.concat(" active")
+          }
+          return <div className={cardClasses} id={id}>{text(d ?? "")}</div>;
+        })}
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(linescore[5])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[6])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[7])}</div>
+        <div className={cardClasses} id="inning">{text(data[5] ?? "")}</div>
+        <div className={cardClasses} id="inning">{text(data[6] ?? "")}</div>
+        <div className={cardClasses} id="inning">{text(data[7] ?? "")}</div>
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(linescore[8])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[9])}</div>
-        <div className={cardClasses} id="inning">{text(linescore[10])}</div>
+        <div className={cardClasses} id="inning">{text(data[8] ?? "")}</div>
+        <div className={cardClasses} id="inning">{text(data[9] ?? "")}</div>
+        <div className={cardClasses} id="inning">{text(data[10] ?? "")}</div>
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(linescore[11])}</div>
+        <div className={cardClasses} id="inning">{text(data[11] ?? "")}</div>
       </div>
       <div className="rhe-group">
-        <div className={cardClasses} id="rhe">{text(linescore[12])}</div>
-        <div className={cardClasses} id="rhe">{text(linescore[13])}</div>
-        <div className={cardClasses} id="rhe">{text(linescore[14])}</div>
+        <div className={cardClasses} id="rhe">{text(data[12] ?? "")}</div>
+        <div className={cardClasses} id="rhe">{text(data[13] ?? "")}</div>
+        <div className={cardClasses} id="rhe">{text(data[14] ?? "")}</div>
       </div>
     </div>
     </>
   );
 }
 
-// function checkForScores(setBoxscore: void) {
-  // const interval = setInterval( function() {
-  //   //do something
-  // }
-  // , 5000)
-  // clearInterval();
-// }
-
-enum Team {
-  AwayTeam = "away",
-  HomeTeam = "home",
+type MinimalLinescore = {
+  pitcher?: number,
+  teamAbbreviation?: string,
+  innings?: number[],
+  runs?: number,
+  hits?: number,
+  errors?: number,
 }
 
-function extractLinescoreForTeam(linescore: GameAPI.Linescore, teamsRes: any, team: Team): (number|string)[] {
-  if (!linescore) {
-    return [];
-  }
-  let linescoreList: (number|string)[] = [];
-  
-  linescoreList.push(0);
+type Linescores = {
+  home?: MinimalLinescore,
+  away?: MinimalLinescore,
+  currentInning?: number,
+  isTopInning?: boolean,
+};
 
-  if (teamsRes && teamsRes.teams.length > 0) {
-    let teamId = team === Team.HomeTeam ? linescore.defense?.team?.id : linescore.offense?.team?.id; 
-    let teams: [any] = teamsRes.teams;
-    linescoreList.push(teams.find((team) => team.id === teamId).abbreviation);
-  }
-  // TODO: Handle extra innings
+function extractLinescores(linescoreRes: GameAPI.Linescore, teamsRes: TeamAPI.TeamsRestObject): Linescores {
+  const away: MinimalLinescore = {innings: []};
+  const home: MinimalLinescore = {innings: []};
   
-  for (let i = linescoreList.length - 1; i < 11; i++) {
-    if (linescore.innings && i < linescore.innings.length) {
-      const runs = linescore.innings[i].home?.runs ?? "";
-      linescoreList.push(runs);
-    } else {
-      linescoreList.push("");
+  // TODO: Get pitcher number
+  away.pitcher = 0;
+  home.pitcher = 0;
+
+  if (teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
+    const getAbbreviation = (teamId: number) => teamsRes.teams?.find((team: any) => team.id === teamId)?.abbreviation;
+    away.teamAbbreviation = getAbbreviation(linescoreRes.defense?.team?.id ?? 0) ?? "";
+    home.teamAbbreviation = getAbbreviation(linescoreRes.offense?.team?.id ?? 0) ?? "";
+  }
+  if (linescoreRes.innings) {
+    for (let i = 0; i < linescoreRes.innings.length; i++) {
+      away.innings?.push(linescoreRes.innings[i].away?.runs ?? 0);
+      home.innings?.push(linescoreRes.innings[i].home?.runs ?? 0);
     }
   }
   
-  if (linescore.teams) {
-    const thisTeam = team === Team.HomeTeam ? linescore.teams.home : linescore.teams.away;
-    if (thisTeam && thisTeam.runs && thisTeam.hits && thisTeam.errors) {
-      linescoreList.push(thisTeam.runs);
-      linescoreList.push(thisTeam.hits);
-      linescoreList.push(thisTeam.errors);
-    } else {
-      linescoreList.push("","","");
-    }
+  if (linescoreRes.teams) {
+    away.hits = linescoreRes.teams.away?.hits ?? 0;
+    away.runs = linescoreRes.teams.away?.runs ?? 0;
+    away.errors = linescoreRes.teams.away?.errors ?? 0;
+    home.hits = linescoreRes.teams.home?.hits ?? 0;
+    home.runs = linescoreRes.teams.home?.runs ?? 0;
+    home.errors = linescoreRes.teams.home?.errors ?? 0;
   }
 
-  return linescoreList;
+  return {
+    away: away,
+    home: home, 
+    currentInning: linescoreRes.currentInning ?? 0,
+    isTopInning: linescoreRes.isTopInning ?? false,
+  };
 }
 
-const soxTeamId = 134; // Pirates
+const soxTeamId = 133; // Athletics
 // const soxTeamId = 111;
 
 function App() {
-  const [awayList, setAwayList] = React.useState<(string | number)[]>([]);
-  const [homeList, setHomeList] = React.useState<(string | number)[]>([]);
+  const [linescores, setLinescores] = React.useState<Linescores>({});
   const [linescoreRes, setLinescoreRes] = React.useState<GameAPI.Linescore | undefined>();
   const [teamsRes, setTeamsRes] = React.useState<TeamAPI.TeamsRestObject | undefined>();
-  //eslint-disable-next-line
   const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
 
   useEffect(() => {
+    // TODO: If no game today, load the most recent game. Add a date param or startDate/endDate
     ScheduleAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
       setScheduleRes(res);
     });
@@ -119,7 +175,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // TODO: If no game today, load previous day's game
     if (scheduleRes && scheduleRes.totalGames && scheduleRes.totalGames > 0
         && scheduleRes.dates && scheduleRes.dates.length > 0
         && scheduleRes.dates[0] && scheduleRes.dates[0].games) {
@@ -137,17 +192,16 @@ function App() {
 
   useEffect(() => {
     if (linescoreRes && teamsRes) {
-      setAwayList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.AwayTeam));
-      setHomeList(extractLinescoreForTeam(linescoreRes, teamsRes, Team.HomeTeam));
+      setLinescores(extractLinescores(linescoreRes, teamsRes));
     }
-  }, [linescoreRes, teamsRes, setAwayList, setHomeList]);
+  }, [linescoreRes, teamsRes, setLinescores]);
 
   return (
     <div className="App">
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
-        {scoreboardRow()}
-        {(awayList.length === 0 || homeList.length === 0) ? <div className='errorLinescore'>Error: No Linescore Data</div> : <> {scoreboardRow(awayList)} {scoreboardRow(homeList)} </> }
+        {createScoreboardRow()}
+        {(linescores.away && linescores.home) ? <> {createScoreboardRow(linescores.away, linescores.currentInning)} {createScoreboardRow(linescores.home, linescores.currentInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
       </div>
     </div>
   );
