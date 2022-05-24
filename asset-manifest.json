@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/fenway-clock/static/css/main.4b3e4596.css",
-    "main.js": "/fenway-clock/static/js/main.e498b0e8.js",
+    "main.css": "/fenway-clock/static/css/main.5d48592e.css",
+    "main.js": "/fenway-clock/static/js/main.fd0e8b0c.js",
     "static/js/787.78c0012f.chunk.js": "/fenway-clock/static/js/787.78c0012f.chunk.js",
     "index.html": "/fenway-clock/index.html",
-    "main.4b3e4596.css.map": "/fenway-clock/static/css/main.4b3e4596.css.map",
-    "main.e498b0e8.js.map": "/fenway-clock/static/js/main.e498b0e8.js.map",
+    "main.5d48592e.css.map": "/fenway-clock/static/css/main.5d48592e.css.map",
+    "main.fd0e8b0c.js.map": "/fenway-clock/static/js/main.fd0e8b0c.js.map",
     "787.78c0012f.chunk.js.map": "/fenway-clock/static/js/787.78c0012f.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.4b3e4596.css",
-    "static/js/main.e498b0e8.js"
+    "static/css/main.5d48592e.css",
+    "static/js/main.fd0e8b0c.js"
   ]
 }
