@@ -156,8 +156,8 @@ function extractLinescores(linescoreRes: GameAPI.Linescore, teamsRes: TeamAPI.Te
   };
 }
 
-const soxTeamId = 133; // Athletics
-// const soxTeamId = 111;
+// const soxTeamId = 133; // Athletics
+const soxTeamId = 111;
 
 function App() {
   const [linescores, setLinescores] = React.useState<Linescores>({});
