@@ -5,7 +5,7 @@ import { GameAPI, TeamAPI, ScheduleAPI } from 'mlb-stats-typescript-api';
 
 const text = (t: string|number) => <p>{t}</p>;
 
-function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: number) {
+function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: number, teamIsUp?: boolean) {
   if (!linescore) {
     return scoreboardRowCreateJSX(["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]);
   }
@@ -13,7 +13,7 @@ function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: numbe
   let innings: (string|number)[] = [];
   if (linescore.innings) {
     // When past the 10th inning, the 11th goes in the 1 spot. So, we mod by 10 and take a slice from the back
-    innings = linescore.innings.slice(-((currentInning ?? 0) % 10));
+    innings = linescore.innings.slice(-((currentInning ?? 0) % 10 - (linescore.home && !teamIsUp ? 1 : 0)));
   }
 
   return scoreboardRowCreateJSX([
@@ -32,7 +32,7 @@ function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: numbe
     linescore.runs ?? 0,
     linescore.hits ?? 0,
     linescore.errors ?? 0,
-  ]);
+  ], currentInning, teamIsUp);
 }
 
 type ScoreboardRowData = [
@@ -53,45 +53,43 @@ type ScoreboardRowData = [
   (string|number)?,
 ];
 
-function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number) {
+function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number, teamIsUp?: boolean) {
   const teamAbbreviation = data[1] ?? "";
   let cardClasses = "card ";
-  const teamClasses = teamAbbreviation === "BOSTON" || teamAbbreviation.length === 0 ? cardClasses : cardClasses + "visitor-team ";
-  if (teamAbbreviation.length !== 0) cardClasses = cardClasses + "inset ";
-  let indexToTurnYellow = 0;
+  const teamClasses = (teamAbbreviation === "BOSTON" || teamAbbreviation.length === 0) ? cardClasses : cardClasses + "visitor-team ";
+  if (teamAbbreviation.length !== 0) {
+    cardClasses = cardClasses + "inset ";
+  }
+  let indexToTurnYellow = -1;
   // The active inning should show as blank unless there is a score, in which case it should be yellow
   if (currentInning) {
-    indexToTurnYellow = currentInning % 10 + 1;
-    // The mod 10 handles more than 10 innings
+    // Handles more than 10 innings
+    indexToTurnYellow = currentInning % 10 - 1;
   }
-  
+  const colorCard = (score?: (number|string), i?: number) => {
+    let classes = cardClasses;
+    if ((i ?? -1) === indexToTurnYellow && teamIsUp && score && score > 0) {
+      classes = classes + "active ";
+    }
+    return  <div className={classes} id="inning">{text(score ?? "")}</div>;
+  };
+  const inningCards: JSX.Element[] = data.slice(2, 12).map(colorCard);
   return (
     <>
     <div id={teamAbbreviation} className={"scoreboardRow"}>
       <div id="player-number" className={cardClasses}>{text(data[0] ?? "P")}</div>
       <div className={teamClasses} id="team-name">{text(teamAbbreviation)}</div>
       <div className="inning-group">
-        {/** TODO: Make this work, turn the correct numbers yellow */}
-        {data.slice(2,5).map(d => {
-          let id = "inning";
-          if (d && d === indexToTurnYellow) {
-            id.concat(" active")
-          }
-          return <div className={cardClasses} id={id}>{text(d ?? "")}</div>;
-        })}
+        {inningCards.slice(0,3)}
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(data[5] ?? "")}</div>
-        <div className={cardClasses} id="inning">{text(data[6] ?? "")}</div>
-        <div className={cardClasses} id="inning">{text(data[7] ?? "")}</div>
+        {inningCards.slice(3,6)}
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(data[8] ?? "")}</div>
-        <div className={cardClasses} id="inning">{text(data[9] ?? "")}</div>
-        <div className={cardClasses} id="inning">{text(data[10] ?? "")}</div>
+        {inningCards.slice(6,9)}
       </div>
       <div className="inning-group">
-        <div className={cardClasses} id="inning">{text(data[11] ?? "")}</div>
+        {inningCards.slice(9,10)}
       </div>
       <div className="rhe-group">
         <div className={cardClasses} id="rhe">{text(data[12] ?? "")}</div>
@@ -104,6 +102,7 @@ function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number)
 }
 
 type MinimalLinescore = {
+  home: boolean,
   pitcher?: number,
   teamAbbreviation?: string,
   innings?: number[],
@@ -120,8 +119,8 @@ type Linescores = {
 };
 
 function extractLinescores(linescoreRes: GameAPI.Linescore, teamsRes: TeamAPI.TeamsRestObject): Linescores {
-  const away: MinimalLinescore = {innings: []};
-  const home: MinimalLinescore = {innings: []};
+  const away: MinimalLinescore = {innings: [], home: false};
+  const home: MinimalLinescore = {innings: [], home: true};
   
   // TODO: Get pitcher number
   away.pitcher = 0;
@@ -129,8 +128,10 @@ function extractLinescores(linescoreRes: GameAPI.Linescore, teamsRes: TeamAPI.Te
 
   if (teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
     const getAbbreviation = (teamId: number) => teamsRes.teams?.find((team: any) => team.id === teamId)?.abbreviation;
-    away.teamAbbreviation = getAbbreviation(linescoreRes.defense?.team?.id ?? 0) ?? "";
-    home.teamAbbreviation = getAbbreviation(linescoreRes.offense?.team?.id ?? 0) ?? "";
+    const defenseTeam = getAbbreviation(linescoreRes.defense?.team?.id ?? 0) ?? "";
+    const offenseTeam = getAbbreviation(linescoreRes.offense?.team?.id ?? 0) ?? ""
+    away.teamAbbreviation = (linescoreRes.isTopInning ?? true) ? offenseTeam : defenseTeam; // Default is home team, top of inning
+    home.teamAbbreviation = (linescoreRes.isTopInning ?? false) ? defenseTeam : offenseTeam;
   }
   if (linescoreRes.innings) {
     for (let i = 0; i < linescoreRes.innings.length; i++) {
@@ -201,7 +202,7 @@ function App() {
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {createScoreboardRow()}
-        {(linescores.away && linescores.home) ? <> {createScoreboardRow(linescores.away, linescores.currentInning)} {createScoreboardRow(linescores.home, linescores.currentInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
+        {(linescores.away && linescores.home && linescores.currentInning && linescores.isTopInning !== undefined) ? <> {createScoreboardRow(linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
       </div>
     </div>
   );
