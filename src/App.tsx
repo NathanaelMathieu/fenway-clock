@@ -168,7 +168,6 @@ function App() {
 
   useEffect(() => {
     // TODO: If no game today, load the most recent game. Add a date param or startDate/endDate
-    MLBStatsAPI.AwardsService.awardRecipients("MLBHOF").then((res) => console.log(res));
     MLBStatsAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
       setScheduleRes(res);
     });
