@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import teamsResponse from './teams-response';
 import './App.css';
-import { GameAPI, TeamAPI, ScheduleAPI } from 'mlb-stats-typescript-api';
+import MLBStatsAPI from 'mlb-stats-typescript-api';
 
 const text = (t: string|number) => <p>{t}</p>;
 
@@ -118,7 +118,7 @@ type Linescores = {
   isTopInning?: boolean,
 };
 
-function extractLinescores(linescoreRes: GameAPI.Linescore, teamsRes: TeamAPI.TeamsRestObject): Linescores {
+function extractLinescores(linescoreRes: MLBStatsAPI.Linescore, teamsRes: MLBStatsAPI.TeamsRestObject): Linescores {
   const away: MinimalLinescore = {innings: [], home: false};
   const home: MinimalLinescore = {innings: [], home: true};
   
@@ -162,13 +162,14 @@ const soxTeamId = 111;
 
 function App() {
   const [linescores, setLinescores] = React.useState<Linescores>({});
-  const [linescoreRes, setLinescoreRes] = React.useState<GameAPI.Linescore | undefined>();
-  const [teamsRes, setTeamsRes] = React.useState<TeamAPI.TeamsRestObject | undefined>();
-  const [scheduleRes, setScheduleRes] = React.useState<ScheduleAPI.ScheduleRestObject | undefined>();
+  const [linescoreRes, setLinescoreRes] = React.useState<MLBStatsAPI.Linescore | undefined>();
+  const [teamsRes, setTeamsRes] = React.useState<MLBStatsAPI.TeamsRestObject | undefined>();
+  const [scheduleRes, setScheduleRes] = React.useState<MLBStatsAPI.ScheduleRestObject | undefined>();
 
   useEffect(() => {
     // TODO: If no game today, load the most recent game. Add a date param or startDate/endDate
-    ScheduleAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
+    MLBStatsAPI.AwardsService.awardRecipients("MLBHOF").then((res) => console.log(res));
+    MLBStatsAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
       setScheduleRes(res);
     });
     // TODO: Cache this in storage, also do an actual call
@@ -184,7 +185,7 @@ function App() {
       const gamePk = scheduleRes.dates[0]?.games[0]?.gamePk;
 
       if (gamePk) {
-        GameAPI.GameService.linescore(gamePk).then((res: GameAPI.Linescore) => {
+        MLBStatsAPI.GameService.linescore(gamePk).then((res: MLBStatsAPI.Linescore) => {
           setLinescoreRes(res);
         });
       }

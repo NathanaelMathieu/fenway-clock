@@ -1,6 +1,6 @@
-import {TeamAPI} from 'mlb-stats-typescript-api';
+import MLBStatsAPI from 'mlb-stats-typescript-api';
 
-const teamsResponse: TeamAPI.TeamRestObject = {
+const teamsResponse: MLBStatsAPI.TeamsRestObject = {
     "copyright" : "Copyright 2022 MLB Advanced Media, L.P.  Use of any content on this page acknowledges agreement to the terms posted here http://gdx.mlb.com/components/copyright.txt",
     "teams" : [ {
       "allStarStatus" : "N",
