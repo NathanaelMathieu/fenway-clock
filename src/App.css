@@ -1,31 +1,28 @@
-html {
+html, body {
   width: 100%;
-  height: 25vw;
+  max-height: 100vh;
+  height: 100vh;
 }
-body {
-  height: 100%;
-}
+
 #root {
   --font-size: 3.33vw;
   --fenway-green: #54796d;
   --fenway-gray: #3b4336;
-
-
-  height: 100%;
   background-color:  var(--fenway-green);
-  
+
   /* The padding and line-height fix vertical alignment issues*/
   /* font-family: 'Martel Sans', sans-serif; padding-top: 20px; */
   /* font-family: 'Poppins', sans-serif; padding-top: 8px; */
   font-family: 'Ubuntu', sans-serif;
-
+  
   color: white;
   font-size: var(--font-size);
   font-weight: bold;
   letter-spacing: -.1vw;
-
+  
+  height: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -33,11 +30,13 @@ body {
   --padding-horizontal-size: .4vw;
   width: 100%;
   height: 100%;
+  max-height: 25vw;
   display: flex;
   justify-content: center;
   gap: 2%;
   padding: 0px var(--padding-horizontal-size);
   flex-direction: column;
+  overflow: hidden;
 }
 
 .scores {
