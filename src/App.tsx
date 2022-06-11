@@ -66,6 +66,8 @@ function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number,
     // Handles more than 10 innings
     indexToTurnYellow = currentInning % 10 - 1;
   }
+
+  // TODO: seems to have false positive if game is over and home team scored in last inning. See BOS/BAL 2nd game of 2022/05/28
   const colorCard = (score?: (number|string), i?: number) => {
     let classes = cardClasses;
     if ((i ?? -1) === indexToTurnYellow && teamIsUp && score && score > 0) {
@@ -118,25 +120,51 @@ type Linescores = {
   isTopInning?: boolean,
 };
 
-function extractLinescores(linescoreRes: MLBStatsAPI.Linescore, teamsRes: MLBStatsAPI.TeamsRestObject): Linescores {
-  const away: MinimalLinescore = {innings: [], home: false};
-  const home: MinimalLinescore = {innings: [], home: true};
+function extractLinescores(currentLinescores: Linescores, linescoreRes: MLBStatsAPI.Linescore, teamsRes: MLBStatsAPI.TeamsRestObject): Linescores {
+  const away: MinimalLinescore = currentLinescores.away ? currentLinescores.away : {innings: [], home: false};
+  const home: MinimalLinescore = currentLinescores.home ? currentLinescores.home : {innings: [], home: true};
   
-  // TODO: Get pitcher number
-  away.pitcher = 0;
-  home.pitcher = 0;
+  // TODO: Move this elsewhere so we don't call it every time
+  if (linescoreRes.defense?.pitcher?.id) {
+    MLBStatsAPI.PeopleService.GetPeople(linescoreRes.defense?.pitcher?.id, {fields: ["people", "primaryNumber"]}).then((res) => {
+      if (res.people && res.people[0] && res.people[0].primaryNumber) {
+        if (linescoreRes.isTopInning) {
+          home.pitcher = res.people[0].primaryNumber;
+        } else {
+          away.pitcher = res.people[0].primaryNumber;
+        }
+      }
+    });
+  }
+  if (linescoreRes.offense?.pitcher?.id) {
+    MLBStatsAPI.PeopleService.GetPeople(linescoreRes.offense?.pitcher?.id, {fields: ["people", "primaryNumber"]}).then((res) => {
+      if (res.people && res.people[0] && res.people[0].primaryNumber) {
+        if (linescoreRes.isTopInning) {
+          away.pitcher = res.people[0].primaryNumber;
+        } else {
+          home.pitcher = res.people[0].primaryNumber;
+        }
+      }
+    });
+  }
 
-  if (teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
+  if ((!away.teamAbbreviation || !home.teamAbbreviation) && teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
     const getAbbreviation = (teamId: number) => teamsRes.teams?.find((team: any) => team.id === teamId)?.abbreviation;
     const defenseTeam = getAbbreviation(linescoreRes.defense?.team?.id ?? 0) ?? "";
     const offenseTeam = getAbbreviation(linescoreRes.offense?.team?.id ?? 0) ?? ""
     away.teamAbbreviation = (linescoreRes.isTopInning ?? true) ? offenseTeam : defenseTeam; // Default is home team, top of inning
-    home.teamAbbreviation = (linescoreRes.isTopInning ?? false) ? defenseTeam : offenseTeam;
+    home.teamAbbreviation = (linescoreRes.isTopInning ?? true) ? defenseTeam : offenseTeam;
   }
-  if (linescoreRes.innings) {
-    for (let i = 0; i < linescoreRes.innings.length; i++) {
-      away.innings?.push(linescoreRes.innings[i].away?.runs ?? 0);
-      home.innings?.push(linescoreRes.innings[i].home?.runs ?? 0);
+  if (linescoreRes.innings && linescoreRes.currentInning && away.innings && home.innings) {
+    if (linescoreRes.currentInning > away.innings.length) {
+      for (let i = away.innings?.length; i < linescoreRes.currentInning; i++) {
+        away.innings?.push(linescoreRes.innings[i].away?.runs ?? 0);
+      }
+    }
+    if (home.innings.length < linescoreRes.currentInning - 1 || (linescoreRes.isTopInning !== undefined && !linescoreRes.isTopInning && home.innings.length < linescoreRes.currentInning)) {
+      for (let i = home.innings?.length; i < linescoreRes.currentInning; i++) {
+        home.innings?.push(linescoreRes.innings[i].home?.runs ?? 0);
+      }    
     }
   }
   
@@ -157,52 +185,88 @@ function extractLinescores(linescoreRes: MLBStatsAPI.Linescore, teamsRes: MLBSta
   };
 }
 
-// const soxTeamId = 133; // Athletics
-const soxTeamId = 111;
-
-function App() {
-  const [linescores, setLinescores] = React.useState<Linescores>({});
-  const [linescoreRes, setLinescoreRes] = React.useState<MLBStatsAPI.Linescore | undefined>();
-  const [teamsRes, setTeamsRes] = React.useState<MLBStatsAPI.TeamsRestObject | undefined>();
-  const [scheduleRes, setScheduleRes] = React.useState<MLBStatsAPI.ScheduleRestObject | undefined>();
-
-  useEffect(() => {
-    // TODO: If no game today, load the most recent game. Add a date param or startDate/endDate
-    MLBStatsAPI.ScheduleService.schedule(1, undefined, {teamId: soxTeamId}).then((res) => {
-      setScheduleRes(res);
-    });
-    // TODO: Cache this in storage, also do an actual call
-    setTeamsRes(teamsResponse);
-  }, []);
-
-  useEffect(() => {
-    if (scheduleRes && scheduleRes.totalGames && scheduleRes.totalGames > 0
-        && scheduleRes.dates && scheduleRes.dates.length > 0
-        && scheduleRes.dates[0] && scheduleRes.dates[0].games) {
-      // TODO: Check for the time of the game, we want to leave the previous game up for a while
-      // TODO: What about double headers?
-      const gamePk = scheduleRes.dates[0]?.games[0]?.gamePk;
-
-      if (gamePk) {
-        MLBStatsAPI.GameService.linescore(gamePk).then((res: MLBStatsAPI.Linescore) => {
-          setLinescoreRes(res);
-        });
+/**
+ * Currently this considers pregame games to be live. They often are in pregame for several hours before the game.
+ * @param {MLBStatsAPI.ScheduleRestObject} res
+ * @returns {number}
+ */
+ function getLiveGamePk(res: MLBStatsAPI.ScheduleRestObject) : {gamePk?: number, statusCode?: string} {
+  if (res.dates && res.dates.length > 0 && res.dates[0].games) {
+    for (let i = res.dates[0].games.length - 1; i >= 0; i--) {
+      const game = res.dates[0].games[i];
+      if (game.status && game.status.statusCode && game.status.statusCode !== "S") {
+        return {gamePk: game.gamePk, statusCode: game.status.statusCode};
       }
     }
-  }, [scheduleRes])
+  }
+  return {};
+}
+
+/**
+ * Currently this considers pregame games to be live. They often are in pregame for several hours before the game.
+ * @param {MLBStatsAPI.ScheduleRestObject} res
+ * @returns {number}
+ */
+function getGameStatus(game: MLBStatsAPI.ScheduleRestGameObject) : string | undefined {
+  if (game.status && game.status.statusCode) {
+    return game.status.statusCode;
+  }
+}
+
+// const SOX_TEAM_ID = 133; // Athletics
+const SOX_TEAM_ID = 111;
+const TIMEOUT_LENGTH = 5000;
+
+function App() {
+  const [gameDate, setGameDate] = React.useState<Date>(new Date());
+  const [currentGame, setCurrentGame] = React.useState<MLBStatsAPI.ScheduleRestGameObject | undefined>();
+  const [gameLive, setGameLive] = React.useState(false);
+  const [apiCounter, setApiCounter] = React.useState<number>(0);
+  const [linescores, setLinescores] = React.useState<Linescores>({});
+  const [teamsRes, setTeamsRes] = React.useState<MLBStatsAPI.TeamsRestObject | undefined>();
+  const [activeGamePk, setActiveGamePk] = React.useState<number | undefined>();
 
   useEffect(() => {
-    if (linescoreRes && teamsRes) {
-      setLinescores(extractLinescores(linescoreRes, teamsRes));
+    const dateString = gameDate.getFullYear() + "-" + (gameDate.getMonth() + 1) + "-" + (gameDate.getDate());
+    // const dateString = "2022-5-28";
+    setTeamsRes(teamsResponse);
+    MLBStatsAPI.ScheduleService.schedule(1, undefined, {teamId: SOX_TEAM_ID, date: dateString, fields: ["dates", "date", "games", "gamePk", "status", "statusCode"]}).then((res) => {
+      const {gamePk, statusCode} = getLiveGamePk(res);
+      if (!gamePk) {
+        const newDate = new Date(gameDate);
+        newDate.setDate(newDate.getDate() - 1)
+        setGameDate(newDate);
+      } else {
+        setActiveGamePk(gamePk);
+      }
+    });
+  }, [gameDate]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    // if (!gameLive && activeGamePk) {
+    //   MLBStatsAPI.GameService.liveGameV1(activeGamePk.toString(), {fields: ["gameDate", "status", "statusCode"]}).then((res) => {
+    //     if (res.gameData.status.preview)
+    //   });
+    // }
+    if (activeGamePk && teamsRes) {
+      timer = setTimeout(() => {
+        MLBStatsAPI.GameService.linescore(activeGamePk, { fields: ["innings", "currentInning", "isTopInning", "home", "away", "runs", "hits", "errors", "defense", "offense", "team", "teams", "id", "pitcher"] }).then((res: MLBStatsAPI.Linescore) => {
+          setLinescores(extractLinescores(linescores, res, teamsRes));
+          setApiCounter(apiCounter + 1);
+        });
+      }, TIMEOUT_LENGTH);
     }
-  }, [linescoreRes, teamsRes, setLinescores]);
+    return () => timer !== undefined ? clearTimeout(timer) : undefined;
+  }, [activeGamePk, teamsRes, apiCounter, linescores, gameLive])
+
 
   return (
     <div className="App">
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {createScoreboardRow()}
-        {(linescores.away && linescores.home && linescores.currentInning && linescores.isTopInning !== undefined) ? <> {createScoreboardRow(linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
+        {(linescores.away && linescores.home) ? <> {createScoreboardRow(linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
       </div>
     </div>
   );
