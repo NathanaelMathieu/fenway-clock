@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
+import useInterval from 'use-interval';
 import teamsResponse from './teams-response';
 import './App.css';
 import MLBStatsAPI from 'mlb-stats-typescript-api';
 
 const text = (t: string|number) => <p>{t}</p>;
 
-function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: number, teamIsUp?: boolean) {
+function createScoreboardRow(pitcherNumber?: number, linescore?: MinimalLinescore, currentInning?: number, teamIsUp?: boolean) {
   if (!linescore) {
     return scoreboardRowCreateJSX(["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]);
   }
@@ -17,7 +18,7 @@ function createScoreboardRow(linescore?: MinimalLinescore, currentInning?: numbe
   }
 
   return scoreboardRowCreateJSX([
-    linescore.pitcher ?? 0,
+    pitcherNumber ?? 0,
     linescore.teamAbbreviation === "BOS" ? "BOSTON" : linescore.teamAbbreviation,
     innings[0],
     innings[1],
@@ -105,7 +106,6 @@ function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number,
 
 type MinimalLinescore = {
   home: boolean,
-  pitcher?: number,
   teamAbbreviation?: string,
   innings?: number[],
   runs?: number,
@@ -123,30 +123,6 @@ type Linescores = {
 function extractLinescores(currentLinescores: Linescores, linescoreRes: MLBStatsAPI.Linescore, teamsRes: MLBStatsAPI.TeamsRestObject): Linescores {
   const away: MinimalLinescore = currentLinescores.away ? currentLinescores.away : {innings: [], home: false};
   const home: MinimalLinescore = currentLinescores.home ? currentLinescores.home : {innings: [], home: true};
-  
-  // TODO: Move this elsewhere so we don't call it every time
-  if (linescoreRes.defense?.pitcher?.id) {
-    MLBStatsAPI.PeopleService.GetPeople(linescoreRes.defense?.pitcher?.id, {fields: ["people", "primaryNumber"]}).then((res) => {
-      if (res.people && res.people[0] && res.people[0].primaryNumber) {
-        if (linescoreRes.isTopInning) {
-          home.pitcher = res.people[0].primaryNumber;
-        } else {
-          away.pitcher = res.people[0].primaryNumber;
-        }
-      }
-    });
-  }
-  if (linescoreRes.offense?.pitcher?.id) {
-    MLBStatsAPI.PeopleService.GetPeople(linescoreRes.offense?.pitcher?.id, {fields: ["people", "primaryNumber"]}).then((res) => {
-      if (res.people && res.people[0] && res.people[0].primaryNumber) {
-        if (linescoreRes.isTopInning) {
-          away.pitcher = res.people[0].primaryNumber;
-        } else {
-          home.pitcher = res.people[0].primaryNumber;
-        }
-      }
-    });
-  }
 
   if ((!away.teamAbbreviation || !home.teamAbbreviation) && teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
     const getAbbreviation = (teamId: number) => teamsRes.teams?.find((team: any) => team.id === teamId)?.abbreviation;
@@ -215,7 +191,7 @@ function getGameStatus(game: MLBStatsAPI.ScheduleRestGameObject) : string | unde
 
 // const SOX_TEAM_ID = 133; // Athletics
 const SOX_TEAM_ID = 111;
-const TIMEOUT_LENGTH = 5000;
+const API_DELAY = 5000;
 
 function App() {
   const [gameDate, setGameDate] = React.useState<Date>(new Date());
@@ -225,6 +201,12 @@ function App() {
   const [linescores, setLinescores] = React.useState<Linescores>({});
   const [teamsRes, setTeamsRes] = React.useState<MLBStatsAPI.TeamsRestObject | undefined>();
   const [activeGamePk, setActiveGamePk] = React.useState<number | undefined>();
+  const [homePitcherId, setHomePitcherId] = React.useState<number | undefined>();
+  const [awayPitcherId, setAwayPitcherId] = React.useState<number | undefined>();
+  const [homePitcherNumber, setHomePitcherNumber] = React.useState<number | undefined>();
+  const [awayPitcherNumber, setAwayPitcherNumber] = React.useState<number | undefined>();
+  const [isTopInning, setIsTopInning] = React.useState<boolean>();
+  const [delay, setDelay] = React.useState<number>(API_DELAY);
 
   useEffect(() => {
     const dateString = gameDate.getFullYear() + "-" + (gameDate.getMonth() + 1) + "-" + (gameDate.getDate());
@@ -242,31 +224,62 @@ function App() {
     });
   }, [gameDate]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    // if (!gameLive && activeGamePk) {
-    //   MLBStatsAPI.GameService.liveGameV1(activeGamePk.toString(), {fields: ["gameDate", "status", "statusCode"]}).then((res) => {
-    //     if (res.gameData.status.preview)
-    //   });
-    // }
-    if (activeGamePk && teamsRes) {
-      timer = setTimeout(() => {
-        MLBStatsAPI.GameService.linescore(activeGamePk, { fields: ["innings", "currentInning", "isTopInning", "home", "away", "runs", "hits", "errors", "defense", "offense", "team", "teams", "id", "pitcher"] }).then((res: MLBStatsAPI.Linescore) => {
-          setLinescores(extractLinescores(linescores, res, teamsRes));
-          setApiCounter(apiCounter + 1);
-        });
-      }, TIMEOUT_LENGTH);
+  useInterval(() => {
+    if (activeGamePk) {
+      MLBStatsAPI.GameService.liveGameV1(activeGamePk, {fields: ["gameDate", "status", "statusCode"]}).then((res) => {
+        console.log(res);
+      });
     }
-    return () => timer !== undefined ? clearTimeout(timer) : undefined;
-  }, [activeGamePk, teamsRes, apiCounter, linescores, gameLive])
+    if (activeGamePk && teamsRes) {
+      MLBStatsAPI.GameService.linescore(activeGamePk, { fields: ["innings", "currentInning", "isTopInning", "home", "away", "runs", "hits", "errors", "defense", "offense", "team", "teams", "id", "pitcher"] }).then((res: MLBStatsAPI.Linescore) => {
+        if (res.isTopInning !== undefined) {
+          setIsTopInning(res.isTopInning);
+        }
+        if (res.defense?.pitcher?.id) {
+          if (res.isTopInning) {
+            setHomePitcherId(res.defense.pitcher.id);
+          } else {
+            setAwayPitcherId(res.defense.pitcher.id);
+          }
+        }
+        if (res.offense?.pitcher?.id) {
+          if (res.isTopInning) {
+            setAwayPitcherId(res.offense.pitcher.id);
+          } else {
+            setHomePitcherId(res.offense.pitcher.id);
+          }
+        }
+        setLinescores(extractLinescores(linescores, res, teamsRes));
+      });
+    }
+  }, delay, true);
 
+  useEffect(() => {
+    if (awayPitcherId) {
+      MLBStatsAPI.PeopleService.GetPeople(awayPitcherId, {fields: ["people", "primaryNumber"]}).then((res) => {
+        if (res.people && res.people[0] && res.people[0].primaryNumber) {
+          setAwayPitcherNumber(res.people[0].primaryNumber);
+        }
+      });
+    }
+  }, [awayPitcherId])
+
+  useEffect(() => {
+    if (homePitcherId) {
+      MLBStatsAPI.PeopleService.GetPeople(homePitcherId, {fields: ["people", "primaryNumber"]}).then((res) => {
+        if (res.people && res.people[0] && res.people[0].primaryNumber) {
+          setHomePitcherNumber(res.people[0].primaryNumber);
+        }
+      });
+    }
+  }, [homePitcherId])
 
   return (
     <div className="App">
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {createScoreboardRow()}
-        {(linescores.away && linescores.home) ? <> {createScoreboardRow(linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Error: No Linescore Data </div> }
+        {(linescores.away && linescores.home) ? <> {createScoreboardRow(awayPitcherNumber, linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(homePitcherNumber, linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Loading... </div> }
       </div>
     </div>
   );
