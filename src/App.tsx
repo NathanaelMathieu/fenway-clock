@@ -6,7 +6,7 @@ import MLBStatsAPI from 'mlb-stats-typescript-api';
 
 const text = (t: string|number) => <p>{t}</p>;
 
-function createScoreboardRow(pitcherNumber?: number, linescore?: MinimalLinescore, currentInning?: number, teamIsUp?: boolean) {
+function createScoreboardRow(pitcherNumber?: number, linescore?: MinimalLinescore, currentInning?: number, teamIsBatting?: boolean) {
   if (!linescore) {
     return scoreboardRowCreateJSX(["P","",1,2,3,4,5,6,7,8,9,10,"R","H","E"]);
   }
@@ -14,7 +14,7 @@ function createScoreboardRow(pitcherNumber?: number, linescore?: MinimalLinescor
   let innings: (string|number)[] = [];
   if (linescore.innings) {
     // When past the 10th inning, the 11th goes in the 1 spot. So, we mod by 10 and take a slice from the back
-    innings = linescore.innings.slice(-((currentInning ?? 0) % 10 - (linescore.home && !teamIsUp ? 1 : 0)));
+    innings = linescore.innings.slice(-((currentInning ?? 0) % 10 - (linescore.home && !teamIsBatting ? 1 : 0)));
   }
 
   return scoreboardRowCreateJSX([
@@ -33,7 +33,7 @@ function createScoreboardRow(pitcherNumber?: number, linescore?: MinimalLinescor
     linescore.runs ?? 0,
     linescore.hits ?? 0,
     linescore.errors ?? 0,
-  ], currentInning, teamIsUp);
+  ], currentInning, teamIsBatting);
 }
 
 type ScoreboardRowData = [
@@ -54,7 +54,7 @@ type ScoreboardRowData = [
   (string|number)?,
 ];
 
-function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number, teamIsUp?: boolean) {
+function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number, teamIsBatting?: boolean) {
   const teamAbbreviation = data[1] ?? "";
   let cardClasses = "card ";
   const teamClasses = (teamAbbreviation === "BOSTON" || teamAbbreviation.length === 0) ? cardClasses : cardClasses + "visitor-team ";
@@ -71,7 +71,7 @@ function scoreboardRowCreateJSX(data: ScoreboardRowData, currentInning?: number,
   // TODO: seems to have false positive if game is over and home team scored in last inning. See BOS/BAL 2nd game of 2022/05/28
   const colorCard = (score?: (number|string), i?: number) => {
     let classes = cardClasses;
-    if ((i ?? -1) === indexToTurnYellow && teamIsUp && score && score > 0) {
+    if ((i ?? -1) === indexToTurnYellow && teamIsBatting && score && score > 0) {
       classes = classes + "active ";
     }
     return  <div className={classes} id="inning">{text(score ?? "")}</div>;
@@ -124,6 +124,7 @@ function extractLinescores(currentLinescores: Linescores, linescoreRes: MLBStats
   const away: MinimalLinescore = currentLinescores.away ? currentLinescores.away : {innings: [], home: false};
   const home: MinimalLinescore = currentLinescores.home ? currentLinescores.home : {innings: [], home: true};
 
+  // TODO: Move this to its own function. Name should be passed in to createScoreboardRow directly
   if ((!away.teamAbbreviation || !home.teamAbbreviation) && teamsRes && teamsRes.teams && teamsRes.teams.length > 0) {
     const getAbbreviation = (teamId: number) => teamsRes.teams?.find((team: any) => team.id === teamId)?.abbreviation;
     const defenseTeam = getAbbreviation(linescoreRes.defense?.team?.id ?? 0) ?? "";
@@ -245,13 +246,13 @@ function App() {
           setHomePitcherId(res.offense?.pitcher?.id);
         }
         setLinescores(extractLinescores(linescores, res, teamsRes));
-        const isReady: boolean = !!linescores.away && !!linescores.home;
-        if (isReady !== isReadyToShowLinescore) {
-          setIsReadyToShowLinescore(isReady);
-        }
       });
     }
   }, delay, true);
+
+  useEffect(() => {
+    setIsReadyToShowLinescore(!!linescores.away && !!linescores.home && !!homePitcherNumber && !!homePitcherNumber);
+  }, [linescores.away, linescores.home, isReadyToShowLinescore, awayPitcherNumber, homePitcherNumber])
 
   useEffect(() => {
     if (awayPitcherId) {
@@ -278,7 +279,13 @@ function App() {
       <div className="name">{text("FENWAY PARK")}</div>
       <div className="scores">
         {createScoreboardRow()}
-        {(linescores.away && linescores.home) ? <> {createScoreboardRow(awayPitcherNumber, linescores.away, linescores.currentInning, linescores.isTopInning)} {createScoreboardRow(homePitcherNumber, linescores.home, linescores.currentInning, !linescores.isTopInning)} </> : <div className='errorLinescore'> Loading... </div> }
+        {isReadyToShowLinescore ?
+          <> 
+            {createScoreboardRow(awayPitcherNumber, linescores.away, linescores.currentInning, linescores.isTopInning)} 
+            {createScoreboardRow(homePitcherNumber, linescores.home, linescores.currentInning, !linescores.isTopInning)}
+          </>
+          : <div className='errorLinescore'> Loading... </div>
+        }
       </div>
     </div>
   );
