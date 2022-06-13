@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import useInterval from 'use-interval';
 import teamsResponse from './teams-response';
 import './App.css';
@@ -166,38 +166,26 @@ function extractLinescores(currentLinescores: Linescores, linescoreRes: MLBStats
  * @param {MLBStatsAPI.ScheduleRestObject} res
  * @returns {number}
  */
- function getLiveGamePk(res: MLBStatsAPI.ScheduleRestObject) : {gamePk?: number, statusCode?: string} {
+ function getLiveGamePk(res: MLBStatsAPI.ScheduleRestObject) : number | undefined {
   if (res.dates && res.dates.length > 0 && res.dates[0].games) {
     for (let i = res.dates[0].games.length - 1; i >= 0; i--) {
       const game = res.dates[0].games[i];
       if (game.status && game.status.statusCode && game.status.statusCode !== "S") {
-        return {gamePk: game.gamePk, statusCode: game.status.statusCode};
+        return game.gamePk;
       }
     }
-  }
-  return {};
-}
-
-/**
- * Currently this considers pregame games to be live. They often are in pregame for several hours before the game.
- * @param {MLBStatsAPI.ScheduleRestObject} res
- * @returns {number}
- */
-function getGameStatus(game: MLBStatsAPI.ScheduleRestGameObject) : string | undefined {
-  if (game.status && game.status.statusCode) {
-    return game.status.statusCode;
   }
 }
 
 // const SOX_TEAM_ID = 133; // Athletics
 const SOX_TEAM_ID = 111;
-const API_DELAY = 5000;
+const API_DELAY_GAME_STARTUP = 250;
+const API_DELAY_GAME_IS_LIVE = 1000 * 5;
+const API_DELAY_NO_GAME = 1000 * 60 * 60;
 
 function App() {
   const [gameDate, setGameDate] = React.useState<Date>(new Date());
-  const [currentGame, setCurrentGame] = React.useState<MLBStatsAPI.ScheduleRestGameObject | undefined>();
-  const [gameLive, setGameLive] = React.useState(false);
-  const [apiCounter, setApiCounter] = React.useState<number>(0);
+  const [gameStatus, setGameStatus] = React.useState<MLBStatsAPI.GameStatusCode>();
   const [linescores, setLinescores] = React.useState<Linescores>({});
   const [teamsRes, setTeamsRes] = React.useState<MLBStatsAPI.TeamsRestObject | undefined>();
   const [activeGamePk, setActiveGamePk] = React.useState<number | undefined>();
@@ -206,14 +194,15 @@ function App() {
   const [homePitcherNumber, setHomePitcherNumber] = React.useState<number | undefined>();
   const [awayPitcherNumber, setAwayPitcherNumber] = React.useState<number | undefined>();
   const [isTopInning, setIsTopInning] = React.useState<boolean>();
-  const [delay, setDelay] = React.useState<number>(API_DELAY);
+  const [isReadyToShowLinescore, setIsReadyToShowLinescore] = React.useState<boolean>(false);
+  const [delay, setDelay] = React.useState<number>(API_DELAY_GAME_STARTUP);
 
   useEffect(() => {
     const dateString = gameDate.getFullYear() + "-" + (gameDate.getMonth() + 1) + "-" + (gameDate.getDate());
     // const dateString = "2022-5-28";
     setTeamsRes(teamsResponse);
     MLBStatsAPI.ScheduleService.schedule(1, undefined, {teamId: SOX_TEAM_ID, date: dateString, fields: ["dates", "date", "games", "gamePk", "status", "statusCode"]}).then((res) => {
-      const {gamePk, statusCode} = getLiveGamePk(res);
+      const gamePk = getLiveGamePk(res);
       if (!gamePk) {
         const newDate = new Date(gameDate);
         newDate.setDate(newDate.getDate() - 1)
@@ -224,10 +213,23 @@ function App() {
     });
   }, [gameDate]);
 
+  useEffect(() => {
+    if (gameStatus === "P" || gameStatus === "I") {
+      setDelay(API_DELAY_GAME_IS_LIVE);
+    } else if (isReadyToShowLinescore) {
+      setDelay(API_DELAY_NO_GAME);
+    } else {
+      setDelay(API_DELAY_GAME_STARTUP)
+    }
+  }, [gameStatus, isReadyToShowLinescore]);
+
+
   useInterval(() => {
     if (activeGamePk) {
-      MLBStatsAPI.GameService.liveGameV1(activeGamePk, {fields: ["gameDate", "status", "statusCode"]}).then((res) => {
-        console.log(res);
+      MLBStatsAPI.GameService.liveGameV1(activeGamePk, {fields: ["gameData", "status", "statusCode"]}).then((res) => {
+        if (res.gameData?.status?.statusCode && res.gameData?.status?.statusCode !== gameStatus) {
+          setGameStatus(res.gameData?.status?.statusCode)
+        }
       });
     }
     if (activeGamePk && teamsRes) {
@@ -235,21 +237,18 @@ function App() {
         if (res.isTopInning !== undefined) {
           setIsTopInning(res.isTopInning);
         }
-        if (res.defense?.pitcher?.id) {
-          if (res.isTopInning) {
-            setHomePitcherId(res.defense.pitcher.id);
-          } else {
-            setAwayPitcherId(res.defense.pitcher.id);
-          }
-        }
-        if (res.offense?.pitcher?.id) {
-          if (res.isTopInning) {
-            setAwayPitcherId(res.offense.pitcher.id);
-          } else {
-            setHomePitcherId(res.offense.pitcher.id);
-          }
+        if (isTopInning) {
+          setAwayPitcherId(res.offense?.pitcher?.id);
+          setHomePitcherId(res.defense?.pitcher?.id);
+        } else {
+          setAwayPitcherId(res.defense?.pitcher?.id);
+          setHomePitcherId(res.offense?.pitcher?.id);
         }
         setLinescores(extractLinescores(linescores, res, teamsRes));
+        const isReady: boolean = !!linescores.away && !!linescores.home;
+        if (isReady !== isReadyToShowLinescore) {
+          setIsReadyToShowLinescore(isReady);
+        }
       });
     }
   }, delay, true);
